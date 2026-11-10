@@ -1,3 +1,5 @@
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -30,6 +32,21 @@ app.get("/api/noticias", async (req, res) => {
     res.status(500).json({ error: "Error al obtener noticias" });
   }
 });
+
+app.post('/api/auth/login', async (req, res) => {
+  const {correo, password} = req.body;
+  const [rows] = await pool.query("SELECT * FROM usuarios WHERE correo = ?", [correo]);
+
+  if(rows.length === 0)
+     return res.status(401).json({ error: "Correo o contraseña incorrectos" });
+   
+  const user = rows[0];
+  const ok = await bcrypt.compare(password, user.password_hash);
+  if (!ok) return res.status(401).json({ error: 'Contraseña incorrecta' });
+
+   const token = jwt.sign({ id: user.id_usuario, rol: user.rol }, process.env.JWT_SECRET, { expiresIn: '1d' });
+  res.json({ token, usuario: { id: user.id_usuario, nombre: user.nombre, rol: user.rol } });
+  });
 
 const PORT = process.env.PORT || 3000;
 
