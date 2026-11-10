@@ -1,5 +1,8 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -7,7 +10,21 @@ const pool = require("./db");
 
 const app = express();
 app.use(cors());
+
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+app.use('/uploads', express.static(uploadsDir));
+
 app.use(express.json());
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadsDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, Date.now() + '-' + Math.round(Math.random() * 1e9) + ext);
+  }
+});
+const upload = multer({ storage });
 
 app.get("/", (req, res) => {
   res.send("Backend Noti-oax funcionando");
@@ -81,17 +98,17 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.put('/api/noticias/:id', verificarToken, soloAdmin, async (req, res) => {
   try {
-    const { titulo, resumen, contenido, id_categoria, destacada } = req.body
+    const { titulo, resumen, contenido, imagen, id_categoria, destacada } = req.body
     await pool.query(
-      'UPDATE noticias SET titulo=?, resumen=?, contenido=?, id_categoria=?, destacada=? WHERE id_noticia=?',
-      [titulo, resumen, contenido, id_categoria, destacada ? 1 : 0, req.params.id]
+      'UPDATE noticias SET titulo=?, resumen=?, contenido=?, imagen=?, id_categoria=?, destacada=? WHERE id_noticia=?',
+      [titulo, resumen, contenido, imagen, id_categoria, destacada ? 1 : 0, req.params.id]
     )
     res.json({ mensaje: 'Noticia actualizada' })
   } catch (e) {
     console.log(e)
     res.status(500).json({ error: 'Error al actualizar' })
   }
-})
+});
 
 app.delete('/api/noticias/:id', verificarToken, soloAdmin, async (req, res) => {
   try {
@@ -101,7 +118,12 @@ app.delete('/api/noticias/:id', verificarToken, soloAdmin, async (req, res) => {
     console.log(e)
     res.status(500).json({ error: 'Error al eliminar' })
   }
-})
+});
+
+app.post('/api/upload', verificarToken, soloAdmin, upload.single('imagen'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'Sin archivo' });
+  res.json({ url: `/uploads/${req.file.filename}` });
+});
 
 const PORT = process.env.PORT || 3000;
 
