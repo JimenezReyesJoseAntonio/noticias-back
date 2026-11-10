@@ -33,6 +33,22 @@ app.get("/api/noticias", async (req, res) => {
   }
 });
 
+function verificarToken(req, res, next){
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: "Token requerido" });
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Token inválido' });
+    req.user = user;
+    next();
+  });
+}
+
+function soloAdmin(req, res, next) {
+  if (req.user.rol !== 'admin') return res.status(403).json({ error: 'Solo admin' });
+  next();
+}
+
 app.post('/api/auth/login', async (req, res) => {
   const {correo, password} = req.body;
   const [rows] = await pool.query("SELECT * FROM usuarios WHERE correo = ?", [correo]);
@@ -47,6 +63,21 @@ app.post('/api/auth/login', async (req, res) => {
    const token = jwt.sign({ id: user.id_usuario, rol: user.rol }, process.env.JWT_SECRET, { expiresIn: '1d' });
   res.json({ token, usuario: { id: user.id_usuario, nombre: user.nombre, rol: user.rol } });
   });
+
+  app.post('/api/noticias', verificarToken, soloAdmin, async (req, res) => {
+  try {
+    const { titulo, resumen, contenido, imagen, id_categoria, destacada } = req.body;
+    const [result] = await pool.query(
+      `INSERT INTO noticias (id_usuario, id_categoria, titulo, resumen, contenido, imagen, fecha, destacada, estado, fecha_publicacion)
+       VALUES (?, ?, ?, ?, ?, ?, CURDATE(), ?, 'publicada', NOW())`,
+      [req.user.id, id_categoria, titulo, resumen, contenido, imagen, destacada || false]
+    );
+    res.status(201).json({ id: result.insertId, mensaje: 'Noticia creada' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Error al crear noticia' });
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 
