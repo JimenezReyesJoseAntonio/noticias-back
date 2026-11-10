@@ -79,6 +79,30 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+app.put('/api/noticias/:id', verificarToken, soloAdmin, async (req, res) => {
+  try {
+    const { titulo, resumen, contenido, id_categoria, destacada } = req.body
+    await pool.query(
+      'UPDATE noticias SET titulo=?, resumen=?, contenido=?, id_categoria=?, destacada=? WHERE id_noticia=?',
+      [titulo, resumen, contenido, id_categoria, destacada ? 1 : 0, req.params.id]
+    )
+    res.json({ mensaje: 'Noticia actualizada' })
+  } catch (e) {
+    console.log(e)
+    res.status(500).json({ error: 'Error al actualizar' })
+  }
+})
+
+app.delete('/api/noticias/:id', verificarToken, soloAdmin, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM noticias WHERE id_noticia=?', [req.params.id])
+    res.json({ mensaje: 'Noticia eliminada' })
+  } catch (e) {
+    console.log(e)
+    res.status(500).json({ error: 'Error al eliminar' })
+  }
+})
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
