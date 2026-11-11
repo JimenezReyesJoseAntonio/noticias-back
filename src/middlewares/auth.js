@@ -22,8 +22,8 @@ async function verificarToken(req, res, next) {
     return res.status(401).json({ mensaje: 'Token inválido o expirado' });
   }
 
-  const [rows] = await pool.query(
-    'SELECT id_usuario, rol, estado FROM usuarios WHERE id_usuario = ? LIMIT 1',
+  const { rows } = await pool.query(
+    'SELECT id_usuario, rol, estado FROM notioax.usuarios WHERE id_usuario = $1 LIMIT 1',
     [userId]
   );
   if (rows.length === 0) return res.status(401).json({ mensaje: 'La cuenta ya no está disponible' });
@@ -49,8 +49,8 @@ async function verificarAutorOAdmin(req, res, next) {
   const id = parseCategoryId(req.params.id);
   if (id === null) return res.status(400).json({ mensaje: 'El identificador no es válido' });
 
-  const [rows] = await pool.query(
-    'SELECT id_usuario FROM noticias WHERE id_noticia = ? LIMIT 1',
+  const { rows } = await pool.query(
+    'SELECT id_usuario FROM notioax.noticias WHERE id_noticia = $1 LIMIT 1',
     [id]
   );
   if (rows.length === 0) return res.status(404).json({ mensaje: 'Noticia no encontrada' });

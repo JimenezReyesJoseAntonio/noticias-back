@@ -14,8 +14,8 @@ async function login(req, res) {
     return res.status(400).json({ mensaje: 'Correo o contraseña no válidos' });
   }
 
-  const [rows] = await pool.query(
-    'SELECT id_usuario, nombre, correo, password_hash, rol, estado FROM usuarios WHERE correo = ? LIMIT 1',
+  const { rows } = await pool.query(
+    'SELECT id_usuario, nombre, correo, password_hash, rol, estado FROM notioax.usuarios WHERE lower(correo) = $1 LIMIT 1',
     [correo]
   );
   if (rows.length === 0) {

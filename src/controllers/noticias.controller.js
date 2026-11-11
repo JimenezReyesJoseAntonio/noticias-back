@@ -3,14 +3,14 @@ const { parseCategoryId } = require('../validators/common');
 const { editableNewsFields, normalizeNewsInput } = require('../validators/noticias');
 
 async function listarNoticias(req, res) {
-  const [rows] = await pool.query(`
+  const { rows } = await pool.query(`
     SELECT
       n.*,
       c.nombre_categoria,
       u.nombre AS autor
-    FROM noticias n
-    JOIN categorias c ON n.id_categoria = c.id_categoria
-    JOIN usuarios u ON n.id_usuario = u.id_usuario
+    FROM notioax.noticias n
+    JOIN notioax.categorias c ON n.id_categoria = c.id_categoria
+    JOIN notioax.usuarios u ON n.id_usuario = u.id_usuario
     WHERE n.estado = 'publicada'
     ORDER BY n.fecha_publicacion DESC
   `);
@@ -21,15 +21,15 @@ async function obtenerNoticia(req, res) {
   const id = parseCategoryId(req.params.id);
   if (id === null) return res.status(400).json({ mensaje: 'El identificador no es válido' });
 
-  const [rows] = await pool.query(`
+  const { rows } = await pool.query(`
     SELECT
       n.*,
       c.nombre_categoria,
       u.nombre AS autor
-    FROM noticias n
-    JOIN categorias c ON n.id_categoria = c.id_categoria
-    JOIN usuarios u ON n.id_usuario = u.id_usuario
-    WHERE n.id_noticia = ? AND n.estado = 'publicada'
+    FROM notioax.noticias n
+    JOIN notioax.categorias c ON n.id_categoria = c.id_categoria
+    JOIN notioax.usuarios u ON n.id_usuario = u.id_usuario
+    WHERE n.id_noticia = $1 AND n.estado = 'publicada'
     LIMIT 1
   `, [id]);
 
@@ -41,10 +41,11 @@ async function crearNoticia(req, res) {
   const { values, error } = normalizeNewsInput(req.body);
   if (error) return res.status(400).json({ mensaje: error });
 
-  const [result] = await pool.query(
-    `INSERT INTO noticias
+  const result = await pool.query(
+    `INSERT INTO notioax.noticias
       (id_usuario, id_categoria, titulo, resumen, contenido, imagen, fecha, destacada, estado, fecha_publicacion)
-     VALUES (?, ?, ?, ?, ?, ?, CURDATE(), ?, 'publicada', NOW())`,
+     VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, $7, 'publicada', NOW())
+     RETURNING id_noticia`,
     [
       req.user.id_usuario,
       values.id_categoria,
@@ -55,7 +56,7 @@ async function crearNoticia(req, res) {
       values.destacada
     ]
   );
-  res.status(201).json({ id: result.insertId, mensaje: 'Noticia creada' });
+  res.status(201).json({ id: result.rows[0].id_noticia, mensaje: 'Noticia creada' });
 }
 
 async function actualizarNoticia(req, res) {
@@ -63,16 +64,16 @@ async function actualizarNoticia(req, res) {
   if (error) return res.status(400).json({ mensaje: error });
 
   const fields = Object.keys(values);
-  const assignments = fields.map((field) => `${editableNewsFields[field]} = ?`).join(', ');
+  const assignments = fields.map((field, index) => `${editableNewsFields[field]} = $${index + 1}`).join(', ');
   await pool.query(
-    `UPDATE noticias SET ${assignments} WHERE id_noticia = ?`,
+    `UPDATE notioax.noticias SET ${assignments} WHERE id_noticia = $${fields.length + 1}`,
     [...fields.map((field) => values[field]), req.noticiaId]
   );
   res.json({ mensaje: 'Noticia actualizada' });
 }
 
 async function eliminarNoticia(req, res) {
-  await pool.query('DELETE FROM noticias WHERE id_noticia = ?', [req.noticiaId]);
+  await pool.query('DELETE FROM notioax.noticias WHERE id_noticia = $1', [req.noticiaId]);
   res.json({ mensaje: 'Noticia eliminada' });
 }
 

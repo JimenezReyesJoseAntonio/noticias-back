@@ -1,9 +1,9 @@
 const pool = require('../db');
 
 async function obtenerEquipo(req, res) {
-  const [rows] = await pool.query(`
+  const { rows } = await pool.query(`
     SELECT id_usuario, nombre, foto_perfil
-    FROM usuarios
+    FROM notioax.usuarios
     WHERE estado = 'activo'
     ORDER BY id_usuario
   `);
