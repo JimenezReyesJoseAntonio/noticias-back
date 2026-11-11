@@ -113,6 +113,16 @@ app.get('/', (req, res) => {
   res.send('Backend Noti-oax funcionando');
 });
 
+app.get('/api/equipo', async (req, res) => {
+  const [rows] = await pool.query(`
+    SELECT id_usuario, nombre, foto_perfil
+    FROM usuarios
+    WHERE estado = 'activo'
+    ORDER BY id_usuario
+  `);
+  res.json(rows);
+});
+
 app.get('/api/noticias', async (req, res) => {
   const [rows] = await pool.query(`
     SELECT
